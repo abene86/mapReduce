@@ -82,10 +82,13 @@ func createFilesFromMapFileKeys(mapFileKeys map[string][]KeyValue) {
 }
 func addMapFileKeyRightFile(fileName string, keyValuePairs []KeyValue) {
 	f, err := os.Create(fileName)
-	checkError(err)
-	jsonString, err := json.Marshal(keyValuePairs)
-	checkError(err)
-	f.Write(jsonString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jsonEncoder := json.NewEncoder(f)
+	for _, keypair := range keyValuePairs {
+		jsonEncoder.Encode(&keypair)
+	}
 	f.Close()
 }
 

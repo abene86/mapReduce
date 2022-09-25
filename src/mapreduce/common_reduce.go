@@ -2,6 +2,7 @@ package mapreduce
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -18,6 +19,7 @@ func doReduce(
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
 ) {
+	fmt.Println("the problem is here")
 	intermediateFilesToProcess := createArrayIntermediateFileNameToProcess(jobName, reduceTaskNumber, nMap)
 	processedWithReducedFunc := proccessIntermediateFile(intermediateFilesToProcess, reduceF)
 	mergeFile := mergeName(jobName, reduceTaskNumber)
@@ -38,8 +40,8 @@ func proccessIntermediateFile(intermediateFilesToProcess []string, reduceF func(
 	bufferSortedKeyValuePairs := []KeyValue{}
 	for _, fileName := range intermediateFilesToProcess {
 		keyValuePair := readFileContent(fileName)
-		sortedKeyValuePair := sortByKey(keyValuePair)
-		bufferSortedKeyValuePairs = append(bufferSortedKeyValuePairs, sortedKeyValuePair...)
+		bufferSortedKeyValuePairs = append(bufferSortedKeyValuePairs, keyValuePair...)
+		bufferSortedKeyValuePairs = sortByKey(bufferSortedKeyValuePairs)
 	}
 	processedWithReducedFunc := runReducedFuncKeyValuePairs(bufferSortedKeyValuePairs, reduceF)
 	return processedWithReducedFunc
@@ -51,7 +53,7 @@ func readFileContent(fileName string) []KeyValue {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = json.Unmarshal(content, &keyValuePairs)
+	err = json.Unmarshal([]byte(content), &keyValuePairs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,10 +69,31 @@ func sortByKey(keyValuePair []KeyValue) []KeyValue {
 
 func runReducedFuncKeyValuePairs(bufferSortedKeyValuePairs []KeyValue, reduceF func(key string, values []string) string) []KeyValue {
 	keyValuePairsProcessed := []KeyValue{}
-	emptyString := []string{}
+	valueStringKeys := getValue(bufferSortedKeyValuePairs)
+	checkerAlreadyWent := createCheckerOfAlreadyWentForReducFunc(valueStringKeys)
 	for _, keyPair := range bufferSortedKeyValuePairs {
-		keyPair.Value = reduceF(keyPair.Key, emptyString)
-		keyValuePairsProcessed = append(keyValuePairsProcessed, keyPair)
+		if checkerAlreadyWent[keyPair.Key] == 0 {
+			keyPair.Value = reduceF(string(keyPair.Key), valueStringKeys)
+			keyValuePairsProcessed = append(keyValuePairsProcessed, keyPair)
+			checkerAlreadyWent[keyPair.Key] = 1
+		}
+		//fmt.Println("processedList", keyValuePairsProcessed)
 	}
 	return keyValuePairsProcessed
+}
+func createCheckerOfAlreadyWentForReducFunc(valueKey []string) map[string]int {
+	checkerAlreadyWent := make(map[string]int)
+	for _, key := range valueKey {
+		checkerAlreadyWent[key] = 0
+	}
+	return checkerAlreadyWent
+}
+
+func getValue(bufferSortedKeyValuePairs []KeyValue) []string {
+	valueStringKeys := []string{}
+	for _, keyPair := range bufferSortedKeyValuePairs {
+		valueStringKeys = append(valueStringKeys, string(keyPair.Key))
+	}
+	//fmt.Println("valueStringKeys", valueStringKeys)
+	return valueStringKeys
 }
