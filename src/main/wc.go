@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"mapreduce"
 	"os"
 	"strconv"
@@ -15,17 +14,12 @@ import (
 // and the value is the file's contents. The return value should be a slice of
 // key/value pairs, each represented by a mapreduce.KeyValue.
 func mapF(document string, value string) (res []mapreduce.KeyValue) {
-	content, err := os.ReadFile(document)
-	if err != nil {
-		log.Fatal(err)
-	}
-	arrayOfWordsDocument := strings.FieldsFunc(string(content), checkRuneIsAppropriate)
-	res = []mapreduce.KeyValue{}
+	arrayOfWordsDocument := strings.FieldsFunc(string(value), checkRuneIsAppropriate)
 	for _, word := range arrayOfWordsDocument {
 		var keyPair mapreduce.KeyValue
-		keyPair.key = word
+		keyPair.Key = word
 		keyPair.Value = "1"
-
+		res = append(res, keyPair)
 	}
 	return res
 }
@@ -39,6 +33,9 @@ func reduceF(key string, values []string) string {
 		if word == key {
 			totalOutPut++
 		}
+	}
+	if totalOutPut == 0 {
+		totalOutPut = 1
 	}
 	numberString := strconv.Itoa(totalOutPut)
 	return numberString
