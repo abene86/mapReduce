@@ -1,0 +1,3 @@
+2022/09/26 09:43:17 RegstrationServer/var/tmp/824--1/mr20280-master error: listen unix /var/tmp/824--1/mr20280-master: bind: A socket operation encountered a dead network.
+exit status 1
+FAIL	mapreduce	3.296s

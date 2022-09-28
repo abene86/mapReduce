@@ -80,9 +80,9 @@ func check(t *testing.T, files []string) {
 		}
 		i++
 	}
-	// if i != nNumber {
-	// 	t.Fatalf("Expected %d lines in output\n", nNumber)
-	// }
+	if i != nNumber {
+		t.Fatalf("Expected %d lines in output\n", nNumber)
+	}
 }
 
 // Workers report back how many RPCs they have processed in the Shutdown reply.

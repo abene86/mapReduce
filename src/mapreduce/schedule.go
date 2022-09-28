@@ -1,5 +1,7 @@
 package mapreduce
 
+import "fmt"
+
 // schedule starts and waits for all tasks in the given phase (Map or Reduce).
 func (mr *Master) schedule(phase jobPhase) {
 	var ntasks int
@@ -22,5 +24,15 @@ func (mr *Master) schedule(phase jobPhase) {
 	//
 	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 	//
+	fmt.Println(phase)
+	if phase == "mapPhase" {
+		fmt.Println("JobPhase: ", phase)
+		fmt.Println("ntasks: ", ntasks)
+		fmt.Println("nios: ", nios)
+	} else {
+		fmt.Println("JobPhase: ", phase)
+		fmt.Println("ntasks: ", ntasks)
+		fmt.Println("nios: ", nios)
+	}
 	debug("Schedule: %v phase done\n", phase)
 }

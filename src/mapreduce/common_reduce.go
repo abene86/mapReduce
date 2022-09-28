@@ -2,7 +2,7 @@ package mapreduce
 
 import (
 	"encoding/json"
-	"fmt"
+	"io"
 	"log"
 	"os"
 	"sort"
@@ -19,7 +19,6 @@ func doReduce(
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
 ) {
-	fmt.Println("the problem is here")
 	intermediateFilesToProcess := createArrayIntermediateFileNameToProcess(jobName, reduceTaskNumber, nMap)
 	processedWithReducedFunc := proccessIntermediateFile(intermediateFilesToProcess, reduceF)
 	mergeFile := mergeName(jobName, reduceTaskNumber)
@@ -48,14 +47,17 @@ func proccessIntermediateFile(intermediateFilesToProcess []string, reduceF func(
 }
 
 func readFileContent(fileName string) []KeyValue {
-	content, err := os.ReadFile(fileName)
-	var keyValuePairs []KeyValue
+	var keyPair KeyValue
+	keyValuePairs := []KeyValue{}
+	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = json.Unmarshal([]byte(content), &keyValuePairs)
-	if err != nil {
-		log.Fatal(err)
+	jsonDecoder := json.NewDecoder(file)
+	errJson := jsonDecoder.Decode(&keyPair)
+	for errJson != io.EOF {
+		keyValuePairs = append(keyValuePairs, keyPair)
+		errJson = jsonDecoder.Decode(&keyPair)
 	}
 	return keyValuePairs
 }
