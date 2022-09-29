@@ -1,7 +1,10 @@
 package mapreduce
 
-import "fmt"
-
+import (
+	"fmt"
+	"time"
+	"math/rand"
+)
 // schedule starts and waits for all tasks in the given phase (Map or Reduce).
 func (mr *Master) schedule(phase jobPhase) {
 	var ntasks int
@@ -17,22 +20,61 @@ func (mr *Master) schedule(phase jobPhase) {
 
 	debug("Schedule: %v %v tasks (%d I/Os)\n", ntasks, phase, nios)
 
-	// All ntasks tasks have to be scheduled on workers, and only once all of
-	// them have been completed successfully should the function return.
-	// Remember that workers may fail, and that any given worker may finish
-	// multiple tasks.
-	//
-	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-	//
-	fmt.Println(phase)
-	if phase == "mapPhase" {
-		fmt.Println("JobPhase: ", phase)
-		fmt.Println("ntasks: ", ntasks)
-		fmt.Println("nios: ", nios)
-	} else {
-		fmt.Println("JobPhase: ", phase)
-		fmt.Println("ntasks: ", ntasks)
-		fmt.Println("nios: ", nios)
+	if(phase == mapPhase){
+		workOnMapPhase(nios, ntasks, mr, phase)
 	}
 	debug("Schedule: %v phase done\n", phase)
+	fmt.Println("I am herer")
+}
+
+func workOnMapPhase(nios int, ntasks int, mr *Master, phase jobPhase){
+	doneWorker := make(chan string, 1)
+	//doneAllWorker := make(chan int, len(mr.files))
+	waitForWorkerToStart(mr)
+	fmt.Println("Worker!", len(mr.workers))
+	for index, inputFileName := range mr.files{
+		fmt.Println("Beginning scheduling: ")
+		var args  DoTaskArgs
+		args.JobName = mr.jobName
+		args.File = inputFileName
+		args.Phase = phase
+		args.TaskNumber =index
+		args.NumOtherPhase = nios
+		fmt.Println("file", inputFileName)
+		go callOnWorkerToDoWork(mr, args, doneWorker)
+		worker := <-doneWorker
+		fmt.Println("worker", worker)
+		go setRegisterChannel(worker, mr)
+		fmt.Println("End hello ")
+	}
+	// for(doneAllWorker!=nil){
+	// 	fmt.Println(<-doneAllWorker)
+	// }
+	
+}
+func callOnWorkerToDoWork(mr *Master, args DoTaskArgs, doneChannel chan string){
+	worker := <-mr.registerChannel
+	fmt.Println("Hello the problem is here", worker)
+	call(worker, "Worker.DoTask", args, nil)
+	fmt.Println("End")
+	fmt.Println("Workers", mr.workers)
+	doneChannel <-worker
+}
+func waitForWorkerToStart(mr *Master){
+	numberWorkers := len(mr.workers)
+	 for(numberWorkers == 0){
+		numberWorkers = len(mr.workers)
+		 if(numberWorkers !=0){
+			break;
+		 }
+		 time.Sleep(1* time.Second)
+	 }
+}
+func setRegisterChannel(worker string, mr *Master){
+	if(mr.registerChannel!=nil){
+		max :=2
+		min :=0
+		index := rand.Intn(max-min) + min
+		mr.registerChannel <-mr.workers[index]
+	}
 }
