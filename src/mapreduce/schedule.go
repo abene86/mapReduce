@@ -22,6 +22,8 @@ func (mr *Master) schedule(phase jobPhase) {
 
 	if(phase == mapPhase){
 		workOnMapPhase(nios, ntasks, mr, phase)
+	}else{
+		workOnReducePhase(nios, ntasks, mr, phase)
 	}
 	debug("Schedule: %v phase done\n", phase)
 	fmt.Println("I am herer")
@@ -29,7 +31,6 @@ func (mr *Master) schedule(phase jobPhase) {
 
 func workOnMapPhase(nios int, ntasks int, mr *Master, phase jobPhase){
 	doneWorker := make(chan string, 1)
-	//doneAllWorker := make(chan int, len(mr.files))
 	waitForWorkerToStart(mr)
 	fmt.Println("Worker!", len(mr.workers))
 	for index, inputFileName := range mr.files{
@@ -47,10 +48,31 @@ func workOnMapPhase(nios int, ntasks int, mr *Master, phase jobPhase){
 		go setRegisterChannel(worker, mr)
 		fmt.Println("End hello ")
 	}
-	// for(doneAllWorker!=nil){
-	// 	fmt.Println(<-doneAllWorker)
-	// }
-	
+}
+func workOnReducePhase(nios int, ntasks int, mr *Master, phase jobPhase){
+	doneWorker := make(chan string, 1)
+	//doneAllWorker := make(chan int, len(mr.files))
+	//waitForWorkerToStart(mr)
+	index:=0
+	for index < nios {
+		fmt.Println("Beginning scheduling: ")
+		var args  DoTaskArgs
+		args.JobName = mr.jobName
+		args.Phase = phase
+		args.TaskNumber =index
+		args.NumOtherPhase = ntasks *2
+		if(index == 50){
+			break
+		}
+		go callOnWorkerToDoWork(mr, args, doneWorker)
+		worker := <-doneWorker
+		fmt.Println("worker", worker)
+		go setRegisterChannel(worker, mr)
+		fmt.Println("End hello ")
+		mr.Lock()
+		index++
+		mr.Unlock()
+	}
 }
 func callOnWorkerToDoWork(mr *Master, args DoTaskArgs, doneChannel chan string){
 	worker := <-mr.registerChannel
