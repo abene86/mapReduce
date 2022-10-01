@@ -37,15 +37,52 @@ func createArrayIntermediateFileNameToProcess(jobName string, numberReducedTasks
 }
 func proccessIntermediateFile(intermediateFilesToProcess []string, reduceF func(key string, values []string) string) []KeyValue {
 	bufferSortedKeyValuePairs := []KeyValue{}
+	processedWithReducedFunc := []KeyValue{}
+	if(len(intermediateFilesToProcess) == 1){
+		lisofListKeyValuePair := createListKeyValuePairOneLargeFile(intermediateFilesToProcess[0])
+		for _, keyPair := range lisofListKeyValuePair{
+			 if(len(keyPair)!=0){
+				bufferSortedKeyValuePairs = runReducedFuncKeyValuePairs(keyPair, reduceF)
+				processedWithReducedFunc = append(processedWithReducedFunc, bufferSortedKeyValuePairs...)
+			 }
+		}
+	}else{
+		bufferSortedKeyValuePairs = processMultipleIntermediateFile(intermediateFilesToProcess, reduceF)
+		if(len(bufferSortedKeyValuePairs[0].Value) != 0){
+			processedWithReducedFunc= runReducedFuncKeyValuePairs(bufferSortedKeyValuePairs, reduceF)
+		}else{
+			processedWithReducedFunc=bufferSortedKeyValuePairs
+		}
+	}
+	return processedWithReducedFunc
+}
+func processMultipleIntermediateFile(intermediateFilesToProcess []string, reduceF func(key string, values []string) string) []KeyValue {
+	bufferSortedKeyValuePairs := []KeyValue{}
 	for _, fileName := range intermediateFilesToProcess {
 		keyValuePair := readFileContent(fileName)
+		if(len(keyValuePair[0].Value) == 0){
+			keyValuePair = runReducedFuncKeyValuePairs(keyValuePair, reduceF)
+		}
 		bufferSortedKeyValuePairs = append(bufferSortedKeyValuePairs, keyValuePair...)
 		bufferSortedKeyValuePairs = sortByKey(bufferSortedKeyValuePairs)
 	}
-	processedWithReducedFunc := runReducedFuncKeyValuePairs(bufferSortedKeyValuePairs, reduceF)
-	return processedWithReducedFunc
+	return bufferSortedKeyValuePairs
 }
-
+func createListKeyValuePairOneLargeFile( intermediateFilesToProcessFileName string) [][]KeyValue{
+	lisofListKeyValuePair := [][]KeyValue{}
+	keyValuePair := readFileContent(intermediateFilesToProcessFileName)
+	index :=0
+	startIndex :=0
+	endIndex :=1000
+	for(index < 100){
+		lisofListKeyValuePair = append(lisofListKeyValuePair, keyValuePair[startIndex : endIndex])
+		startIndex = endIndex
+		endIndex = startIndex+1000
+		index++
+	}
+	//fmt.Println("Hello", lisofListKeyValuePair)
+	return lisofListKeyValuePair
+}
 func readFileContent(fileName string) []KeyValue {
 	var keyPair KeyValue
 	keyValuePairs := []KeyValue{}
@@ -73,6 +110,7 @@ func runReducedFuncKeyValuePairs(bufferSortedKeyValuePairs []KeyValue, reduceF f
 	keyValuePairsProcessed := []KeyValue{}
 	valueStringKeys := getValue(bufferSortedKeyValuePairs)
 	checkerAlreadyWent := createCheckerOfAlreadyWentForReducFunc(valueStringKeys)
+	//bufferSortedKeyValuePairs = bufferSortedKeyValuePairs[0:10000]
 	for _, keyPair := range bufferSortedKeyValuePairs {
 		if checkerAlreadyWent[keyPair.Key] == 0 {
 			keyPair.Value = reduceF(string(keyPair.Key), valueStringKeys)

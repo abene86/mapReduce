@@ -45,7 +45,7 @@ func workOnMapPhase(nios int, ntasks int, mr *Master, phase jobPhase){
 		go callOnWorkerToDoWork(mr, args, doneWorker)
 		worker := <-doneWorker
 		fmt.Println("worker", worker)
-		go setRegisterChannel(worker, mr)
+		go setRegisterChannel(worker, mr, 2)
 		fmt.Println("End hello ")
 	}
 }
@@ -67,7 +67,7 @@ func workOnReducePhase(nios int, ntasks int, mr *Master, phase jobPhase){
 		go callOnWorkerToDoWork(mr, args, doneWorker)
 		worker := <-doneWorker
 		fmt.Println("worker", worker)
-		go setRegisterChannel(worker, mr)
+		go setRegisterChannel(worker, mr, 5)
 		fmt.Println("End hello ")
 		mr.Lock()
 		index++
@@ -77,7 +77,12 @@ func workOnReducePhase(nios int, ntasks int, mr *Master, phase jobPhase){
 func callOnWorkerToDoWork(mr *Master, args DoTaskArgs, doneChannel chan string){
 	worker := <-mr.registerChannel
 	fmt.Println("Hello the problem is here", worker)
-	call(worker, "Worker.DoTask", args, nil)
+	err := call(worker, "Worker.DoTask", args, nil)
+	for(err == false){
+		go setRegisterChannel(worker, mr, len(mr.workers))
+		worker = <-mr.registerChannel
+		err = call(worker, "Worker.DoTask", args, nil)
+	}
 	fmt.Println("End")
 	fmt.Println("Workers", mr.workers)
 	doneChannel <-worker
@@ -92,11 +97,17 @@ func waitForWorkerToStart(mr *Master){
 		 time.Sleep(1* time.Second)
 	 }
 }
-func setRegisterChannel(worker string, mr *Master){
+func setRegisterChannel(worker string, mr *Master, max int){
 	if(mr.registerChannel!=nil){
-		max :=2
+		maxCount :=returnAvailableWorkers(max, len(mr.workers))
 		min :=0
-		index := rand.Intn(max-min) + min
+		index := rand.Intn(maxCount-min) + min
 		mr.registerChannel <-mr.workers[index]
 	}
+}
+func returnAvailableWorkers(max int, actualWorkers int) int{
+	 if(max != actualWorkers){
+		return actualWorkers
+	 }
+	 return max
 }
