@@ -48,17 +48,10 @@ func doMap(
 	if err != nil {
 		log.Fatal(err)
 	}
-	mapFileKeys := make(map[string][]KeyValue)
 	keyValuePairs := mapF(inFile, string(content))
 	intermediateFile := createIntermediateFiles(jobName, mapTaskNumber, nReduce)
-	for _, value := range keyValuePairs {
-		indexPlaceFile := int(ihash(value.Key)) % nReduce
-		intermediateFileName := intermediateFile[indexPlaceFile]
-		ans := append(mapFileKeys[intermediateFileName], value)
-		mapFileKeys[intermediateFileName] = ans
-	}
-	jsonString, err := json.Marshal(keyValuePairs)
-
+	mapFileKeys := mapIntermediateFileToKeyPairs(keyValuePairs, intermediateFile, nReduce)
+	createFilesFromMapFileKeys(mapFileKeys)
 }
 
 func createIntermediateFiles(jobName string, mapTaskNumber int, numberFilesToCreate int) []string {
@@ -70,6 +63,33 @@ func createIntermediateFiles(jobName string, mapTaskNumber int, numberFilesToCre
 		index++
 	}
 	return intermediateFile
+}
+
+func mapIntermediateFileToKeyPairs(keyValuePairs []KeyValue, intermediateFile []string, numberReduceFile int) map[string][]KeyValue {
+	mapFileKeys := make(map[string][]KeyValue)
+	for _, value := range keyValuePairs {
+		indexPlaceFile := int(ihash(value.Key)) % numberReduceFile
+		intermediateFileName := intermediateFile[indexPlaceFile]
+		ans := append(mapFileKeys[intermediateFileName], value)
+		mapFileKeys[intermediateFileName] = ans
+	}
+	return mapFileKeys
+}
+func createFilesFromMapFileKeys(mapFileKeys map[string][]KeyValue) {
+	for key, value := range mapFileKeys {
+		addMapFileKeyRightFile(key, value)
+	}
+}
+func addMapFileKeyRightFile(fileName string, keyValuePairs []KeyValue) {
+	f, err := os.Create(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jsonEncoder := json.NewEncoder(f)
+	for _, keypair := range keyValuePairs {
+		jsonEncoder.Encode(&keypair)
+	}
+	f.Close()
 }
 
 func ihash(s string) uint32 {
